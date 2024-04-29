@@ -17,24 +17,27 @@ namespace OrganizzeReports.Console.Adapter
         }
         private string GetEndpointUrl(Endpoint endpoint)
         {
-            return endpoint switch
+            string endpointPath = endpoint switch
             {
-                Endpoint.CreditCards => "/credit_cards",
-                Endpoint.Categories => "/categories",
-                Endpoint.Accounts => "/accounts",
-                Endpoint.Transactions => "/transactions",
+                Endpoint.CreditCards => "credit_cards",
+                Endpoint.Categories => "categories",
+                Endpoint.Accounts => "accounts",
+                Endpoint.Transactions => "transactions",
                 _ => throw new ArgumentException("Endpoint desconhecido"),
             };
+
+            return $"{_baseUrl}/{endpointPath}";
+
         }
         #endregion
 
-        private readonly string _baseUrl = "https://api.organizze.com.br/rest/v2"; 
+        private readonly string _baseUrl = "https://api.organizze.com.br/rest/v2";
         private readonly HttpClient _httpClient;
         public OrganizzeAPIAdapter(string name, string email, string apiKey)
         {
             HttpClient client = new HttpClient();
-            client.BaseAddress = new Uri(_baseUrl);
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes($"{email}:{apiKey}")));
+            //client.BaseAddress = new Uri(_baseUrl);
+            client.DefaultRequestHeaders.Add("Authorization", "Basic " + Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes($"{email}:{apiKey}")));
             client.DefaultRequestHeaders.Add("User-Agent", $"{name} ({email})");
             _httpClient = client;
         }
@@ -65,6 +68,7 @@ namespace OrganizzeReports.Console.Adapter
         private async Task<IEnumerable<T>> GetEndpointData<T>(Endpoint endpoint)
         {
             string endpointUrl = GetEndpointUrl(endpoint);
+
             HttpResponseMessage response = await _httpClient.GetAsync(endpointUrl);
 
             if (response.IsSuccessStatusCode)
