@@ -28,7 +28,7 @@ namespace OrganizzeReports.Console.Adapter
         }
         #endregion
 
-        private readonly string _baseUrl = "https://api.organizze.com.br/rest/v2";   ;
+        private readonly string _baseUrl = "https://api.organizze.com.br/rest/v2"; 
         private readonly HttpClient _httpClient;
         public OrganizzeAPIAdapter(string name, string email, string apiKey)
         {

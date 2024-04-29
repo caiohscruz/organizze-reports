@@ -32,6 +32,10 @@ namespace OrganizzeReports.Console.DTOs
         public string Uuid { get; set; }
 
         [JsonPropertyName("kind")]
+        public string Kind { get; set; }
 
+        [JsonPropertyName("archived")]
+        public bool Archived { get; set; }
 
     }
+}
