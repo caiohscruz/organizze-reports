@@ -1,51 +1,50 @@
 ﻿using System.Text.Json.Serialization;
 
 namespace OrganizzeReports.Console.DTOs
-{  
-
+{
     public class TransactionDTO
     {
         [JsonPropertyName("id")]
-        public long Id { get; set; }
+        public long? Id { get; set; }
 
         [JsonPropertyName("description")]
         public string Description { get; set; }
 
         [JsonPropertyName("date")]
-        public DateTime Date { get; set; }
+        public DateTime? Date { get; set; }
 
         [JsonPropertyName("paid")]
-        public bool Paid { get; set; }
+        public bool? Paid { get; set; }
 
         [JsonPropertyName("amount_cents")]
-        public int AmountCents { get; set; }
+        public int? AmountCents { get; set; }
 
         [JsonPropertyName("total_installments")]
-        public int TotalInstallments { get; set; }
+        public int? TotalInstallments { get; set; }
 
         [JsonPropertyName("installment")]
-        public int Installment { get; set; }
+        public int? Installment { get; set; }
 
         [JsonPropertyName("recurring")]
-        public bool Recurring { get; set; }
+        public bool? Recurring { get; set; }
 
         [JsonPropertyName("account_id")]
-        public long AccountId { get; set; }
+        public long? AccountId { get; set; }
 
         [JsonPropertyName("category_id")]
-        public long CategoryId { get; set; }
+        public long? CategoryId { get; set; }
 
         [JsonPropertyName("notes")]
         public string Notes { get; set; }
 
         [JsonPropertyName("attachments_count")]
-        public int AttachmentsCount { get; set; }
+        public int? AttachmentsCount { get; set; }
 
         [JsonPropertyName("credit_card_id")]
-        public long CreditCardId { get; set; }
+        public long? CreditCardId { get; set; }
 
         [JsonPropertyName("credit_card_invoice_id")]
-        public int CreditCardInvoiceId { get; set; }
+        public int? CreditCardInvoiceId { get; set; }
 
         [JsonPropertyName("paid_credit_card_id")]
         public object PaidCreditCardId { get; set; }
@@ -60,10 +59,10 @@ namespace OrganizzeReports.Console.DTOs
         public object OpositeAccountId { get; set; }
 
         [JsonPropertyName("created_at")]
-        public DateTime CreatedAt { get; set; }
+        public DateTime? CreatedAt { get; set; }
 
         [JsonPropertyName("updated_at")]
-        public DateTime UpdatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
 
         [JsonPropertyName("tags")]
         public List<object> Tags { get; set; }
@@ -74,5 +73,6 @@ namespace OrganizzeReports.Console.DTOs
         [JsonPropertyName("recurrence_id")]
         public object RecurrenceId { get; set; }
     }
+
 
 }
