@@ -52,9 +52,9 @@ namespace OrganizzeReports.Console.Services
                     Amount = transaction.AmountCents != null ? Math.Round((decimal)transaction.AmountCents / 100, 2) : 0M,
                     Installment = transaction.Installment,
                     Recurring = transaction.Recurring,
-                    Account = account.Name,
-                    Category = category.Name,
-                    CreditCard = creditCard.Name
+                    Account = account?.Name,
+                    Category = category?.Name,
+                    CreditCard = creditCard?.Name
                 };
             });
 
