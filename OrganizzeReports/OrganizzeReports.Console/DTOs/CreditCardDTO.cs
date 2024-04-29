@@ -2,7 +2,7 @@
 
 namespace OrganizzeReports.Console.DTOs
 {
-    public class CreditCard
+    public class CreditCardDTO
     {
         [JsonPropertyName("id")]
         public long Id { get; set; }

@@ -3,7 +3,7 @@
 namespace OrganizzeReports.Console.DTOs
 {  
 
-    public class Transaction
+    public class TransactionDTO
     {
         [JsonPropertyName("id")]
         public long Id { get; set; }

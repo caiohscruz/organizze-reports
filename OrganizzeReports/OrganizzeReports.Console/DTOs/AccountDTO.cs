@@ -2,7 +2,7 @@
 
 namespace OrganizzeReports.Console.DTOs
 {
-    public class Account
+    public class AccountDTO
     {
         [JsonPropertyName("id")]
         public long Id { get; set; }
