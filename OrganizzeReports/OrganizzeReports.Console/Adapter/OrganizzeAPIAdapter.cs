@@ -5,7 +5,7 @@ using System.Text.Json;
 
 namespace OrganizzeReports.Console.Adapter
 {
-    public class OrganizzeAPIAdapter : IOrganizzeAPIAdapter
+    public class OrganizzeAPIAdapter
     {
         #region Endpoints
         private enum Endpoint
