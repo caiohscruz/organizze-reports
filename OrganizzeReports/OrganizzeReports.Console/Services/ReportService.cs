@@ -88,12 +88,18 @@ namespace OrganizzeReports.Console.Services
                 var sumAmount = transactions.Where(t => t.Category == category).Sum(t => t.Amount);
                 worksheet.Cell(row++, 2).Value = sumAmount;
             }
+
+            var amountColumn = worksheet.Column("B");
+            amountColumn.Style.NumberFormat.Format = "R$ #,##0.00";
         }
 
         private void AddTransactionsSheet(XLWorkbook workbook, IEnumerable<TransactionViewModel> transactions, string sheetName)
         {
             var worksheet = workbook.Worksheets.Add(sheetName);
             worksheet.Cell(1, 1).InsertTable(transactions);
+            // Formata as células da coluna Amount para moeda BRL
+            var amountColumn = worksheet.Column("C");
+            amountColumn.Style.NumberFormat.Format = "R$ #,##0.00";
         }
 
         private async Task<IEnumerable<TransactionDTO>> GetTransactionsForMonthsAgo(int numberOfMonths)
