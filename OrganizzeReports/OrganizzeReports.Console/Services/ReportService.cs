@@ -1,10 +1,7 @@
 ﻿using ClosedXML.Excel;
-using CsvHelper;
-using CsvHelper.Configuration;
 using OrganizzeReports.Console.Adapters;
 using OrganizzeReports.Console.DTOs;
 using OrganizzeReports.Console.ViewModels;
-using System.Globalization;
 
 namespace OrganizzeReports.Console.Services
 {
@@ -59,19 +56,7 @@ namespace OrganizzeReports.Console.Services
             });
 
             GenerateExcel(transactions);
-        }
-
-        private void GenerateCsv(IEnumerable<TransactionViewModel> transactions)
-        {
-            string downloadsPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            string filePath = Path.Combine(downloadsPath, "Downloads", "transactions.csv");
-
-            using (var writer = new StreamWriter(filePath)) 
-            using (var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)))
-            {
-                csv.WriteRecords(transactions);
-            }
-        }
+        }       
 
         private void GenerateExcel(IEnumerable<TransactionViewModel> transactions)
         {
