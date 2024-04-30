@@ -20,12 +20,8 @@ namespace OrganizzeReports.Console
             var reportService = new ReportService(apiAdapter);
 
             Task.Run(async () =>
-            {
-                
-                var transactions = await reportService.GetTransactions();
-
-                
-                // Use os resultados aqui
+            {                
+               await reportService.GenerateExcel();                
             }).Wait();
 
         }
