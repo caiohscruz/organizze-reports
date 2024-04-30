@@ -1,4 +1,5 @@
-﻿using CsvHelper;
+﻿using ClosedXML.Excel;
+using CsvHelper;
 using CsvHelper.Configuration;
 using OrganizzeReports.Console.Adapters;
 using OrganizzeReports.Console.DTOs;
@@ -57,7 +58,7 @@ namespace OrganizzeReports.Console.Services
                 };
             });
 
-            GenerateCsv(transactions);
+            GenerateExcel(transactions);
         }
 
         private void GenerateCsv(IEnumerable<TransactionViewModel> transactions)
@@ -72,5 +73,42 @@ namespace OrganizzeReports.Console.Services
             }
         }
 
+        private void GenerateExcel(IEnumerable<TransactionViewModel> transactions)
+        {
+            string downloadsPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            string filePath = Path.Combine(downloadsPath, "Downloads", "transactions.xlsx");
+
+            using (var workbook = new XLWorkbook())
+            {
+                // Aba Transações do Mês Atual
+                var worksheetTransactions = workbook.Worksheets.Add("TransaçõesMesAtual");
+                worksheetTransactions.Cell(1, 1).InsertTable(transactions);
+
+                // Aba Compilado do Mês Atual
+                var worksheetSummary = workbook.Worksheets.Add("CompiladoMesAtual");
+
+                // Obter categorias distintas
+                var distinctCategories = transactions.Select(t => t.Category).Distinct().OrderBy(c => c);
+
+                // Escrever categorias distintas na primeira coluna
+                int row = 1;
+                foreach (var category in distinctCategories)
+                {
+                    worksheetSummary.Cell(row++, 1).Value = category;
+                }
+
+                // Calcular e escrever soma dos amounts para cada categoria
+                row = 1;
+                foreach (var category in distinctCategories)
+                {
+                    var sumAmount = transactions.Where(t => t.Category == category).Sum(t => t.Amount);
+                    worksheetSummary.Cell(row++, 2).Value = sumAmount;
+                }
+
+                workbook.SaveAs(filePath);
+            }
+        }
     }
+
 }
+
