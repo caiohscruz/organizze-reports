@@ -1,11 +1,9 @@
-﻿using OrganizzeReports.Console.Adapters;
+﻿using CsvHelper;
+using CsvHelper.Configuration;
+using OrganizzeReports.Console.Adapters;
 using OrganizzeReports.Console.DTOs;
 using OrganizzeReports.Console.ViewModels;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Globalization;
 
 namespace OrganizzeReports.Console.Services
 {
@@ -31,7 +29,7 @@ namespace OrganizzeReports.Console.Services
             _isReady = true;
         }
 
-        public async Task<IEnumerable<TransactionViewModel>> GetTransactions()
+        public async Task GetTransactions()
         {
             if(!_isReady) await Init();
 
@@ -39,7 +37,7 @@ namespace OrganizzeReports.Console.Services
             var transactionDTOs = await _apiAdapter.GetTransactions();
 
             // Mapear IDs para nomes ou detalhes correspondentes
-            var transactionsWithDetails = transactionDTOs.Select(transaction =>
+            var transactions = transactionDTOs.Select(transaction =>
             {
                 var account = _accounts.FirstOrDefault(a => a.Id == transaction.AccountId);
                 var category = _categories.FirstOrDefault(c => c.Id == transaction.CategoryId);
@@ -50,6 +48,7 @@ namespace OrganizzeReports.Console.Services
                     Description = transaction.Description,
                     Date = transaction.Date,
                     Amount = transaction.AmountCents != null ? Math.Round((decimal)transaction.AmountCents / 100, 2) : 0M,
+                    TotalInstallments = transaction.TotalInstallments,
                     Installment = transaction.Installment,
                     Recurring = transaction.Recurring,
                     Account = account?.Name,
@@ -58,7 +57,19 @@ namespace OrganizzeReports.Console.Services
                 };
             });
 
-            return transactionsWithDetails;
+            GenerateCsv(transactions);
+        }
+
+        private void GenerateCsv(IEnumerable<TransactionViewModel> transactions)
+        {
+            string downloadsPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            string filePath = Path.Combine(downloadsPath, "Downloads", "transactions.csv");
+
+            using (var writer = new StreamWriter(filePath)) 
+            using (var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture)))
+            {
+                csv.WriteRecords(transactions);
+            }
         }
 
     }
