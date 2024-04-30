@@ -62,35 +62,48 @@ namespace OrganizzeReports.Console.Services
                 AddTransactionsSheet(workbook, transactionsLastMonth, "TransaçõesMêsPassado");
                 AddSummaryTransactionsSheet(workbook, transactionsLastMonth, "CompiladoMêsPassado");
                 AddTransactionsSheet(workbook, transactions3MonthsAgo, "Transações3MesesAnteriores");
-                AddSummaryTransactionsSheet(workbook, transactions3MonthsAgo, "Compilado3MesesAnteriores");
+                AddSummaryTransactionsSheet(workbook, transactions3MonthsAgo, "Compilado3MesesAnteriores", 3);
                 AddTransactionsSheet(workbook, transactions6MonthsAgo, "Transações6MesesAnteriores");
-                AddSummaryTransactionsSheet(workbook, transactions6MonthsAgo, "Compilado6MesesAnteriores");
+                AddSummaryTransactionsSheet(workbook, transactions6MonthsAgo, "Compilado6MesesAnteriores", 6);
                 AddTransactionsSheet(workbook, transactions12MonthsAgo, "Transações12MesesAnteriores");
-                AddSummaryTransactionsSheet(workbook, transactions12MonthsAgo, "Compilado12MesesAnteriores");
+                AddSummaryTransactionsSheet(workbook, transactions12MonthsAgo, "Compilado12MesesAnteriores", 12);
 
                 workbook.SaveAs(filePath);
             }
         }
 
-        private void AddSummaryTransactionsSheet(XLWorkbook workbook, IEnumerable<TransactionViewModel> transactions, string sheetName)
+        private void AddSummaryTransactionsSheet(XLWorkbook workbook, IEnumerable<TransactionViewModel> transactions, string sheetName, int numMonths = 1)
         {
             var worksheet = workbook.Worksheets.Add(sheetName);
+
+            worksheet.Cell(1, 1).Value = "Category";
+            worksheet.Cell(1, 2).Value = "Total";
+
+            if(numMonths > 1) worksheet.Cell(1, 3).Value = "TotalPerMonth";
 
             int row = 1;
             foreach (var category in _distinctCategories)
             {
-                worksheet.Cell(row++, 1).Value = category;
+                worksheet.Cell(++row, 1).Value = category;
             }
 
             row = 1;
             foreach (var category in _distinctCategories)
             {
                 var sumAmount = transactions.Where(t => t.Category == category).Sum(t => t.Amount);
-                worksheet.Cell(row++, 2).Value = sumAmount;
+                worksheet.Cell(++row, 2).Value = sumAmount;
+
+                if (numMonths > 1) worksheet.Cell(row, 3).Value = sumAmount / numMonths; 
             }
 
             var amountColumn = worksheet.Column("B");
             amountColumn.Style.NumberFormat.Format = "R$ #,##0.00";
+
+            if (numMonths > 1)
+            {
+                var amountPerMonthColumn = worksheet.Column("C");
+                amountPerMonthColumn.Style.NumberFormat.Format = "R$ #,##0.00";
+            }
         }
 
         private void AddTransactionsSheet(XLWorkbook workbook, IEnumerable<TransactionViewModel> transactions, string sheetName)
