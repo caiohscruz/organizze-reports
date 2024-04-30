@@ -10,12 +10,35 @@ namespace OrganizzeReports.Console.Services
     {
         private OrganizzeAPIAdapter _apiAdapter;
 
+        /// <summary>
+        /// Represents a collection of categories relevant for generating reports.
+        /// </summary>
         private IEnumerable<CategoryDTO> _categories;
-        private IEnumerable<string> _distinctCategories;
+
+        /// <summary>
+        /// Represents a collection of accounts relevant for generating reports.
+        /// </summary>
         private IEnumerable<AccountDTO> _accounts;
+
+        /// <summary>
+        /// Represents a collection of credit cards relevant for generating reports.
+        /// </summary>
         private IEnumerable<CreditCardDTO> _creditCards;
 
+        /// <summary>
+        /// Indicates whether the service has retrieved the necessary data for generating reports.
+        /// </summary>
         private bool _isReady = false;
+
+        /// <summary>
+        /// Represents a collection of categories that are not relevant for generating reports.
+        /// </summary>
+        private readonly IEnumerable<string> _categoriesToIgnore = new List<string>() { "Transferências" };
+
+        /// <summary>
+        ///  Represents a collection of distinct categories used for generating reports.
+        /// </summary>
+        private IEnumerable<string> _distinctCategories;
 
         public ReportService(OrganizzeAPIAdapter apiAdapter) { 
             _apiAdapter = apiAdapter;
@@ -24,7 +47,7 @@ namespace OrganizzeReports.Console.Services
         private async Task Init()
         {
             _categories = await _apiAdapter.GetCategories();
-            _distinctCategories = _categories.Where(t => t.Archived == false).Select(t => t.Name).Distinct().OrderBy(c => c);
+            _distinctCategories = _categories.Where(t => t.Archived == false && !_categoriesToIgnore.Contains(t.Name)).Select(t => t.Name).Distinct().OrderBy(c => c);
             _accounts = await _apiAdapter.GetAccounts();
             _creditCards = await _apiAdapter.GetCreditCards();
             _isReady = true;
@@ -104,6 +127,8 @@ namespace OrganizzeReports.Console.Services
                 var amountPerMonthColumn = worksheet.Column("C");
                 amountPerMonthColumn.Style.NumberFormat.Format = "R$ #,##0.00";
             }
+
+            worksheet.Columns().AdjustToContents();
         }
 
         private void AddTransactionsSheet(XLWorkbook workbook, IEnumerable<TransactionViewModel> transactions, string sheetName)
@@ -113,6 +138,8 @@ namespace OrganizzeReports.Console.Services
             // Formata as células da coluna Amount para moeda BRL
             var amountColumn = worksheet.Column("C");
             amountColumn.Style.NumberFormat.Format = "R$ #,##0.00";
+
+            worksheet.Columns().AdjustToContents();
         }
 
         private async Task<IEnumerable<TransactionDTO>> GetTransactionsForMonthsAgo(int numberOfMonths)

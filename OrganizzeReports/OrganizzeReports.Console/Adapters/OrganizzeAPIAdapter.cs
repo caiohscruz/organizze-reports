@@ -1,4 +1,5 @@
 ﻿using OrganizzeReports.Console.DTOs;
+using OrganizzeReports.Console.Utils;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
@@ -53,23 +54,23 @@ namespace OrganizzeReports.Console.Adapters
         }
 
         /// <summary>
-        /// Retrieves transactions of the current month
+        /// Retrieves transactions based on the specified criteria.
         /// </summary>
-        /// <returns>Returns all transactions from the current month</returns>
-        public async Task<IEnumerable<TransactionDTO>> GetTransactions()
+        /// <param name="startDate">Optional. The start date of the period.</param>
+        /// <param name="endDate">Optional. The end date of the period.</param>
+        /// <param name="accountId">Optional. The ID of the account.</param>
+        /// <returns>Returns all transactions that match the specified criteria.</returns>
+        /// <remarks>
+        /// This method retrieves a maximum of 500 records.
+        /// </remarks>
+        public async Task<IEnumerable<TransactionDTO>> GetTransactions(DateTime? startDate = null, DateTime? endDate = null, long? accountId = null)
         {
-            return await GetEndpointData<TransactionDTO>(Endpoint.Transactions);
-        }
+            var queryBuilder = new QueryBuilder();
+            if (startDate != null) queryBuilder.Add("start_date", startDate.Value.ToString("yyyy-MM-dd"));
+            if (endDate != null) queryBuilder.Add("end_date", endDate.Value.ToString("yyyy-MM-dd"));
+            if (accountId != null) queryBuilder.Add("account_id", accountId.Value.ToString());
+            string queryString = queryBuilder.ToString();
 
-        /// <summary>
-        /// Retrieves transactions within a specified period.
-        /// </summary>
-        /// <param name="startDate">The start date of the period.</param>
-        /// <param name="endDate">The end date of the period.</param>
-        /// <returns>Returns all transactions that occurred between the start and end dates, inclusive.</returns>
-        public async Task<IEnumerable<TransactionDTO>> GetTransactions(DateTime startDate, DateTime endDate)
-        {
-            var queryString = $"?start_date={startDate:yyyy-MM-dd}&end_date={endDate:yyyy-MM-dd}";
             return await GetEndpointData<TransactionDTO>(Endpoint.Transactions, queryString);
         }
 
@@ -97,7 +98,7 @@ namespace OrganizzeReports.Console.Adapters
         {
             string endpointUrl = GetEndpointUrl(endpoint);
 
-            if(queryString != null) endpointUrl += queryString;
+            if (!string.IsNullOrEmpty(queryString)) endpointUrl += queryString;
 
             HttpResponseMessage response = await _httpClient.GetAsync(endpointUrl);
 
