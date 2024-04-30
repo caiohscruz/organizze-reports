@@ -61,7 +61,9 @@ namespace OrganizzeReports.Console.Services
         private void GenerateExcel(IEnumerable<TransactionViewModel> transactions)
         {
             string downloadsPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            string filePath = Path.Combine(downloadsPath, "Downloads", "transactions.xlsx");
+            string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+            string fileName = $"finantial_report_{timestamp}.xlsx";
+            string filePath = Path.Combine(downloadsPath, "Downloads", fileName);
 
             using (var workbook = new XLWorkbook())
             {
