@@ -2,6 +2,7 @@
 using OrganizzeReports.Console.Adapters;
 using OrganizzeReports.Console.DTOs;
 using OrganizzeReports.Console.ViewModels;
+using System.Transactions;
 
 namespace OrganizzeReports.Console.Services
 {
@@ -10,6 +11,7 @@ namespace OrganizzeReports.Console.Services
         private OrganizzeAPIAdapter _apiAdapter;
 
         private IEnumerable<CategoryDTO> _categories;
+        private IEnumerable<string> _distinctCategories;
         private IEnumerable<AccountDTO> _accounts;
         private IEnumerable<CreditCardDTO> _creditCards;
 
@@ -22,20 +24,88 @@ namespace OrganizzeReports.Console.Services
         private async Task Init()
         {
             _categories = await _apiAdapter.GetCategories();
+            _distinctCategories = _categories.Select(t => t.Name).Distinct().OrderBy(c => c);
             _accounts = await _apiAdapter.GetAccounts();
             _creditCards = await _apiAdapter.GetCreditCards();
             _isReady = true;
         }
 
-        public async Task GetTransactions()
+        public async Task GenerateExcel()
         {
             if(!_isReady) await Init();
 
             // Obter as transações
-            var transactionDTOs = await _apiAdapter.GetTransactions();
+            var transactionsDTOActualMonth = await _apiAdapter.GetTransactions();
+            var transactionsDTOLastMonth = await GetTransactionsForMonthsAgo(1);
+            var transactionsDTO3MonthsAgo = await GetTransactionsForMonthsAgo(3);
+            var transactionsDTO6MonthsAgo = await GetTransactionsForMonthsAgo(6);
+            var transactionsDTO12MonthsAgo = await GetTransactionsForMonthsAgo(12);
 
             // Mapear IDs para nomes ou detalhes correspondentes
-            var transactions = transactionDTOs.Select(transaction =>
+            var transactionsActualMonth = MapTransactions(transactionsDTOActualMonth);
+            var transactionsLastMonth = MapTransactions(transactionsDTOLastMonth);
+            var transactions3MonthsAgo = MapTransactions(transactionsDTO3MonthsAgo);
+            var transactions6MonthsAgo = MapTransactions(transactionsDTO6MonthsAgo);
+            var transactions12MonthsAgo = MapTransactions(transactionsDTO12MonthsAgo);
+
+            // Nome e Caminho do arquivo
+            string downloadsPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+            string fileName = $"finantial_report_{timestamp}.xlsx";
+            string filePath = Path.Combine(downloadsPath, "Downloads", fileName);
+         
+
+            using (var workbook = new XLWorkbook())
+            {
+                AddTransactionsSheet(workbook, transactionsActualMonth, "TransaçõesMêsAtual");
+                AddSummaryTransactionsSheet(workbook, transactionsActualMonth, "CompiladoMêsAtual");
+                AddTransactionsSheet(workbook, transactionsLastMonth, "TransaçõesMêsPassado");
+                AddSummaryTransactionsSheet(workbook, transactionsLastMonth, "CompiladoMêsPassado");
+                AddTransactionsSheet(workbook, transactions3MonthsAgo, "Transações3MesesAnteriores");
+                AddSummaryTransactionsSheet(workbook, transactions3MonthsAgo, "Compilado3MesesAnteriores");
+                AddTransactionsSheet(workbook, transactions6MonthsAgo, "Transações6MesesAnteriores");
+                AddSummaryTransactionsSheet(workbook, transactions6MonthsAgo, "Compilado6MesesAnteriores");
+                AddTransactionsSheet(workbook, transactions12MonthsAgo, "Transações12MesesAnteriores");
+                AddSummaryTransactionsSheet(workbook, transactions12MonthsAgo, "Compilado12MesesAnteriores");
+
+                workbook.SaveAs(filePath);
+            }
+        }
+
+        private void AddSummaryTransactionsSheet(XLWorkbook workbook, IEnumerable<TransactionViewModel> transactions, string sheetName)
+        {
+            var worksheet = workbook.Worksheets.Add(sheetName);
+
+            int row = 1;
+            foreach (var category in _distinctCategories)
+            {
+                worksheet.Cell(row++, 1).Value = category;
+            }
+
+            row = 1;
+            foreach (var category in _distinctCategories)
+            {
+                var sumAmount = transactions.Where(t => t.Category == category).Sum(t => t.Amount);
+                worksheet.Cell(row++, 2).Value = sumAmount;
+            }
+        }
+
+        private void AddTransactionsSheet(XLWorkbook workbook, IEnumerable<TransactionViewModel> transactions, string sheetName)
+        {
+            var worksheet = workbook.Worksheets.Add(sheetName);
+            worksheet.Cell(1, 1).InsertTable(transactions);
+        }
+
+        private async Task<IEnumerable<TransactionDTO>> GetTransactionsForMonthsAgo(int numberOfMonths)
+        {
+            var startDate = DateTime.Now.AddMonths(-numberOfMonths).AddDays(1 - DateTime.Now.Day);
+            var endDate = DateTime.Now.AddDays(-DateTime.Now.Day);
+            return await _apiAdapter.GetTransactions(startDate, endDate);
+        }
+
+        private IEnumerable<TransactionViewModel> MapTransactions (IEnumerable<TransactionDTO> transactions)
+        {
+            return transactions.Select(transaction =>
             {
                 var account = _accounts.FirstOrDefault(a => a.Id == transaction.AccountId);
                 var category = _categories.FirstOrDefault(c => c.Id == transaction.CategoryId);
@@ -54,46 +124,6 @@ namespace OrganizzeReports.Console.Services
                     CreditCard = creditCard?.Name
                 };
             });
-
-            GenerateExcel(transactions);
-        }       
-
-        private void GenerateExcel(IEnumerable<TransactionViewModel> transactions)
-        {
-            string downloadsPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
-            string fileName = $"finantial_report_{timestamp}.xlsx";
-            string filePath = Path.Combine(downloadsPath, "Downloads", fileName);
-
-            using (var workbook = new XLWorkbook())
-            {
-                // Aba Transações do Mês Atual
-                var worksheetTransactions = workbook.Worksheets.Add("TransaçõesMesAtual");
-                worksheetTransactions.Cell(1, 1).InsertTable(transactions);
-
-                // Aba Compilado do Mês Atual
-                var worksheetSummary = workbook.Worksheets.Add("CompiladoMesAtual");
-
-                // Obter categorias distintas
-                var distinctCategories = transactions.Select(t => t.Category).Distinct().OrderBy(c => c);
-
-                // Escrever categorias distintas na primeira coluna
-                int row = 1;
-                foreach (var category in distinctCategories)
-                {
-                    worksheetSummary.Cell(row++, 1).Value = category;
-                }
-
-                // Calcular e escrever soma dos amounts para cada categoria
-                row = 1;
-                foreach (var category in distinctCategories)
-                {
-                    var sumAmount = transactions.Where(t => t.Category == category).Sum(t => t.Amount);
-                    worksheetSummary.Cell(row++, 2).Value = sumAmount;
-                }
-
-                workbook.SaveAs(filePath);
-            }
         }
     }
 

@@ -52,6 +52,12 @@ namespace OrganizzeReports.Console.Adapters
         {
             return await GetEndpointData<TransactionDTO>(Endpoint.Transactions);
         }
+        
+        public async Task<IEnumerable<TransactionDTO>> GetTransactions(DateTime startDate, DateTime endDate)
+        {
+            var queryString = $"?start_date={startDate:yyyy-MM-dd}&end_date={endDate:yyyy-MM-dd}";
+            return await GetEndpointData<TransactionDTO>(Endpoint.Transactions, queryString);
+        }
 
         public async Task<IEnumerable<AccountDTO>> GetAccounts()
         {
@@ -65,9 +71,11 @@ namespace OrganizzeReports.Console.Adapters
         #endregion
 
         #region Utils
-        private async Task<IEnumerable<T>> GetEndpointData<T>(Endpoint endpoint)
+        private async Task<IEnumerable<T>> GetEndpointData<T>(Endpoint endpoint, string queryString = null)
         {
             string endpointUrl = GetEndpointUrl(endpoint);
+
+            if(queryString != null) endpointUrl += queryString;
 
             HttpResponseMessage response = await _httpClient.GetAsync(endpointUrl);
 
