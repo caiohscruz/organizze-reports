@@ -24,7 +24,7 @@ namespace OrganizzeReports.Console.Services
         private async Task Init()
         {
             _categories = await _apiAdapter.GetCategories();
-            _distinctCategories = _categories.Select(t => t.Name).Distinct().OrderBy(c => c);
+            _distinctCategories = _categories.Where(t => t.Archived == false).Select(t => t.Name).Distinct().OrderBy(c => c);
             _accounts = await _apiAdapter.GetAccounts();
             _creditCards = await _apiAdapter.GetCreditCards();
             _isReady = true;
