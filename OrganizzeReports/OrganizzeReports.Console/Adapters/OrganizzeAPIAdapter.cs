@@ -43,27 +43,49 @@ namespace OrganizzeReports.Console.Adapters
         }
 
         #region Requests
+        /// <summary>
+        /// Retrieves categories
+        /// </summary>
+        /// <returns>Returns all categories</returns>
         public async Task<IEnumerable<CategoryDTO>> GetCategories()
         {
             return await GetEndpointData<CategoryDTO>(Endpoint.Categories);
         }
 
+        /// <summary>
+        /// Retrieves transactions of the current month
+        /// </summary>
+        /// <returns>Returns all transactions from the current month</returns>
         public async Task<IEnumerable<TransactionDTO>> GetTransactions()
         {
             return await GetEndpointData<TransactionDTO>(Endpoint.Transactions);
         }
-        
+
+        /// <summary>
+        /// Retrieves transactions within a specified period.
+        /// </summary>
+        /// <param name="startDate">The start date of the period.</param>
+        /// <param name="endDate">The end date of the period.</param>
+        /// <returns>Returns all transactions that occurred between the start and end dates, inclusive.</returns>
         public async Task<IEnumerable<TransactionDTO>> GetTransactions(DateTime startDate, DateTime endDate)
         {
             var queryString = $"?start_date={startDate:yyyy-MM-dd}&end_date={endDate:yyyy-MM-dd}";
             return await GetEndpointData<TransactionDTO>(Endpoint.Transactions, queryString);
         }
 
+        /// <summary>
+        /// Retrieves accounts
+        /// </summary>
+        /// <returns>Returns all accounts</returns>
         public async Task<IEnumerable<AccountDTO>> GetAccounts()
         {
             return await GetEndpointData<AccountDTO>(Endpoint.Accounts);
         }
 
+        /// <summary>
+        /// Retrieves credit cards
+        /// </summary>
+        /// <returns>Returns all credit cards</returns>
         public async Task<IEnumerable<CreditCardDTO>> GetCreditCards()
         {
             return await GetEndpointData<CreditCardDTO>(Endpoint.CreditCards);
