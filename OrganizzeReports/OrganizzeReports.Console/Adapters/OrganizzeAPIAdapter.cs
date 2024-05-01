@@ -6,6 +6,9 @@ using System.Text.Json;
 
 namespace OrganizzeReports.Console.Adapters
 {
+    /// <summary>
+    /// Adapter class for interacting with the Organizze API.
+    /// </summary>
     public class OrganizzeAPIAdapter
     {
         #region Endpoints
@@ -16,6 +19,7 @@ namespace OrganizzeReports.Console.Adapters
             Accounts,
             Transactions
         }
+
         private string GetEndpointUrl(Endpoint endpoint)
         {
             string endpointPath = endpoint switch
@@ -24,20 +28,25 @@ namespace OrganizzeReports.Console.Adapters
                 Endpoint.Categories => "categories",
                 Endpoint.Accounts => "accounts",
                 Endpoint.Transactions => "transactions",
-                _ => throw new ArgumentException("Endpoint desconhecido"),
+                _ => throw new ArgumentException("Unknown endpoint"),
             };
 
             return $"{_baseUrl}/{endpointPath}";
-
         }
         #endregion
 
         private readonly string _baseUrl = "https://api.organizze.com.br/rest/v2";
         private readonly HttpClient _httpClient;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="OrganizzeAPIAdapter"/> class.
+        /// </summary>
+        /// <param name="name">The name of the user.</param>
+        /// <param name="email">The email of the user.</param>
+        /// <param name="apiKey">The API key for accessing the Organizze API.</param>
         public OrganizzeAPIAdapter(string name, string email, string apiKey)
         {
             HttpClient client = new HttpClient();
-            //client.BaseAddress = new Uri(_baseUrl);
             client.DefaultRequestHeaders.Add("Authorization", "Basic " + Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes($"{email}:{apiKey}")));
             client.DefaultRequestHeaders.Add("User-Agent", $"{name} ({email})");
             _httpClient = client;
@@ -45,9 +54,9 @@ namespace OrganizzeReports.Console.Adapters
 
         #region Requests
         /// <summary>
-        /// Retrieves categories
+        /// Retrieves all categories.
         /// </summary>
-        /// <returns>Returns all categories</returns>
+        /// <returns>Returns a collection of <see cref="CategoryDTO"/>.</returns>
         public async Task<IEnumerable<CategoryDTO>> GetCategories()
         {
             return await GetEndpointData<CategoryDTO>(Endpoint.Categories);
@@ -59,7 +68,7 @@ namespace OrganizzeReports.Console.Adapters
         /// <param name="startDate">Optional. The start date of the period.</param>
         /// <param name="endDate">Optional. The end date of the period.</param>
         /// <param name="accountId">Optional. The ID of the account.</param>
-        /// <returns>Returns all transactions that match the specified criteria.</returns>
+        /// <returns>Returns a collection of <see cref="TransactionDTO"/> that match the specified criteria.</returns>
         /// <remarks>
         /// This method retrieves a maximum of 500 records.
         /// If dates are not specified, the method retrieves transactions from the current month.
@@ -76,18 +85,18 @@ namespace OrganizzeReports.Console.Adapters
         }
 
         /// <summary>
-        /// Retrieves accounts
+        /// Retrieves all accounts.
         /// </summary>
-        /// <returns>Returns all accounts</returns>
+        /// <returns>Returns a collection of <see cref="AccountDTO"/>.</returns>
         public async Task<IEnumerable<AccountDTO>> GetAccounts()
         {
             return await GetEndpointData<AccountDTO>(Endpoint.Accounts);
         }
 
         /// <summary>
-        /// Retrieves credit cards
+        /// Retrieves all credit cards.
         /// </summary>
-        /// <returns>Returns all credit cards</returns>
+        /// <returns>Returns a collection of <see cref="CreditCardDTO"/>.</returns>
         public async Task<IEnumerable<CreditCardDTO>> GetCreditCards()
         {
             return await GetEndpointData<CreditCardDTO>(Endpoint.CreditCards);
@@ -110,7 +119,7 @@ namespace OrganizzeReports.Console.Adapters
             }
             else
             {
-                System.Console.WriteLine($"Erro na requisição para {endpoint}: {response.StatusCode}");
+                System.Console.WriteLine($"Error in request to {endpoint}: {response.StatusCode}");
                 return default;
             }
         }
