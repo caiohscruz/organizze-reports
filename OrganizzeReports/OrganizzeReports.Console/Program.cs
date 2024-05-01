@@ -1,5 +1,6 @@
 ﻿using OrganizzeReports.Console.Adapters;
 using OrganizzeReports.Console.Services;
+using OrganizzeReports.Console.Services.ExcelService;
 
 namespace OrganizzeReports.Console
 {
@@ -17,11 +18,12 @@ namespace OrganizzeReports.Console
             string apiKey = System.Console.ReadLine();           
 
             var apiAdapter = new OrganizzeAPIAdapter(name, email, apiKey);
-            var reportService = new ReportService(apiAdapter);
+            var excelServce = new ExcelService();
+            var reportService = new ReportService(apiAdapter, excelServce);
 
             Task.Run(async () =>
             {                
-               await reportService.GenerateExcel();                
+               await reportService.GenerateCategoryReport();                
             }).Wait();
 
         }
