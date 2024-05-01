@@ -26,7 +26,7 @@ namespace OrganizzeReports.Console
             var reportService = new ReportService(apiAdapter, excelServce);
 
             var isReportGenerated = false;
-            var hasErrors = false;
+            var error = string.Empty;
 
             Task.Run(async () =>
             {
@@ -38,14 +38,13 @@ namespace OrganizzeReports.Console
                 }
                 catch (Exception ex)
                 {
-                    System.Console.WriteLine($"Erro ao gerar o relatório: {ex.Message}");
-                    hasErrors = true;
+                    error = ex.Message;
                 }
             });
 
             int dotsCount = 0;
 
-            while (!isReportGenerated && !hasErrors)
+            while (!isReportGenerated && string.IsNullOrEmpty(error))
             {
                 string dots = new string('.', dotsCount % 4); // ciclo de 4 pontos
                 System.Console.Write($"\rProcessando o relatório{dots}   ");
@@ -53,7 +52,15 @@ namespace OrganizzeReports.Console
                 Thread.Sleep(500); // aguarda 0.5 segundos entre cada iteração
             }
 
-            System.Console.WriteLine("\rRelatório processado com sucesso!");
+            if(string.IsNullOrEmpty(error))
+            {
+                System.Console.WriteLine("\rRelatório processado com sucesso!");
+            }
+            else
+            {
+                System.Console.WriteLine("\rErro ao processar o relatório!");
+                System.Console.ReadLine();
+            }
 
         }
     }
