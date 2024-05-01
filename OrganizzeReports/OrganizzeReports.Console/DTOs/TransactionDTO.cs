@@ -32,7 +32,7 @@ namespace OrganizzeReports.Console.DTOs
         public long? AccountId { get; set; }
 
         [JsonPropertyName("category_id")]
-        public long? CategoryId { get; set; }
+        public long CategoryId { get; set; }
 
         [JsonPropertyName("notes")]
         public string Notes { get; set; }
