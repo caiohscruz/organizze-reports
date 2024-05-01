@@ -62,6 +62,7 @@ namespace OrganizzeReports.Console.Adapters
         /// <returns>Returns all transactions that match the specified criteria.</returns>
         /// <remarks>
         /// This method retrieves a maximum of 500 records.
+        /// If dates are not specified, the method retrieves transactions from the current month.
         /// </remarks>
         public async Task<IEnumerable<TransactionDTO>> GetTransactions(DateTime? startDate = null, DateTime? endDate = null, long? accountId = null)
         {
