@@ -1,4 +1,5 @@
 using ClosedXML.Excel;
+using System.Diagnostics;
 
 namespace OrganizzeReports.Console.Services.ExcelService
 {
@@ -6,14 +7,16 @@ namespace OrganizzeReports.Console.Services.ExcelService
     {
         public void GenerateExcelFile(string fileName, IEnumerable<SpreadSheet> spreadSheets)
         {
-            var workbook = new XLWorkbook();
-
-            foreach (var spreadSheet in spreadSheets)
+            using (var workbook = new XLWorkbook())
             {
-                AddSpreadSheet(workbook, spreadSheet.Items, spreadSheet.Name, spreadSheet.CurrencyColumns);
-            }
+                foreach (var spreadSheet in spreadSheets)
+                {
+                    AddSpreadSheet(workbook, spreadSheet.Items, spreadSheet.Name, spreadSheet.CurrencyColumns);
+                }
 
-            workbook.SaveAs(fileName);
+                workbook.SaveAs(fileName);
+            };
+            Process.Start(new ProcessStartInfo(fileName) { UseShellExecute = true });
         }
 
         private void AddSpreadSheet(XLWorkbook workbook, IEnumerable<object> items, string sheetName, IEnumerable<int>? currencyColumns = null)
