@@ -26,17 +26,26 @@ namespace OrganizzeReports.Console
             var reportService = new ReportService(apiAdapter, excelServce);
 
             var isReportGenerated = false;
+            var hasErrors = false;
 
             Task.Run(async () =>
             {
-                await reportService.GenerateCategoryReport();
+                try
+                {
+                    await reportService.GenerateCategoryReport();
 
-                isReportGenerated = true;
+                    isReportGenerated = true;
+                }
+                catch (Exception ex)
+                {
+                    System.Console.WriteLine($"Erro ao gerar o relatório: {ex.Message}");
+                    hasErrors = true;
+                }
             });
 
             int dotsCount = 0;
 
-            while (!isReportGenerated)
+            while (!isReportGenerated && !hasErrors)
             {
                 string dots = new string('.', dotsCount % 4); // ciclo de 4 pontos
                 System.Console.Write($"\rProcessando o relatório{dots}   ");
