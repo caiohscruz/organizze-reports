@@ -61,10 +61,10 @@ namespace OrganizzeReports.Console.Services
 
             // Retrieve transactions from Organizze API
             var transactionsDTOCurrentMonth = await _apiAdapter.GetTransactions();
-            var transactionsDTOLastMonth = await GetTransactionsFromPastMonths(1);
-            var transactionsDTO3MonthsAgo = await GetTransactionsFromPastMonths(3);
-            var transactionsDTO6MonthsAgo = await GetTransactionsFromPastMonths(6);
             var transactionsDTO12MonthsAgo = await GetTransactionsFromPastMonths(12);
+            var transactionsDTOLastMonth = transactionsDTO12MonthsAgo.Where(dto => dto.Date >= new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(-1));
+            var transactionsDTO3MonthsAgo = transactionsDTO12MonthsAgo.Where(dto => dto.Date >= new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(-3));
+            var transactionsDTO6MonthsAgo = transactionsDTO12MonthsAgo.Where(dto => dto.Date >= new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(-6));
 
             // Map transactions to view models
             var transactionsCurrentMonth = MapTransactionsViewModelFromDTO(transactionsDTOCurrentMonth);

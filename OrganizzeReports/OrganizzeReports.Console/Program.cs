@@ -15,7 +15,11 @@ namespace OrganizzeReports.Console
             string name = System.Console.ReadLine();
 
             System.Console.WriteLine("Digite sua apiKey:");
-            string apiKey = System.Console.ReadLine();           
+            string apiKey = System.Console.ReadLine();
+
+            //string email = "";
+            //string name = "";
+            //string apiKey = "";
 
             var apiAdapter = new OrganizzeAPIAdapter(name, email, apiKey);
             var excelServce = new ExcelService();
