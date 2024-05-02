@@ -2,6 +2,7 @@
 using OrganizzeReports.Console.DTOs;
 using OrganizzeReports.Console.Services.ExcelService;
 using OrganizzeReports.Console.ViewModels;
+using System.Runtime.CompilerServices;
 
 namespace OrganizzeReports.Console.Services
 {
@@ -48,7 +49,7 @@ namespace OrganizzeReports.Console.Services
 
         private async Task Init()
         {
-            _categories = await _apiAdapter.GetCategories();
+            _categories = await GetCategoryWithEnrichedNames();
             _distinctCategories = _categories.Where(t => !_categoriesToIgnore.Contains(t.Name)).Select(t => t.Name).Distinct().OrderBy(c => c);
             _accounts = await _apiAdapter.GetAccounts();
             _creditCards = await _apiAdapter.GetCreditCards();
@@ -90,6 +91,20 @@ namespace OrganizzeReports.Console.Services
             };
 
             _excelService.GenerateExcelFile(filePath, spreadSheets);
+        }
+
+        private async Task<IEnumerable<CategoryDTO>> GetCategoryWithEnrichedNames()
+        {
+            var categories = await _apiAdapter.GetCategories();
+            foreach (var category in categories)
+            {
+                if(category.ParentId != null)
+                {
+                    var parentCategory = categories.FirstOrDefault(c => c.Id == category.ParentId);
+                    category.Name = $"[{parentCategory.Name}] {category.Name}";
+                }
+            }
+            return categories;
         }
 
         private async Task<IEnumerable<TransactionDTO>> GetTransactionsFromPastMonths(int numberOfMonths)
