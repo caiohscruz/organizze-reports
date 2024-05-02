@@ -2,7 +2,6 @@
 using OrganizzeReports.Console.DTOs;
 using OrganizzeReports.Console.Services.ExcelService;
 using OrganizzeReports.Console.ViewModels;
-using System.Runtime.CompilerServices;
 
 namespace OrganizzeReports.Console.Services
 {
@@ -34,7 +33,7 @@ namespace OrganizzeReports.Console.Services
         /// <summary>
         /// Represents a collection of categories that are not relevant for generating reports.
         /// </summary>
-        private readonly List<string> _categoriesToIgnore = new List<string>() { "Transferências", "Pagamento de fatura", "Comer Fora", "Giovanna Peral Salvadeo", "Cristiano" };
+        private readonly List<string> _categoriesToIgnore = new List<string>() { "Transferências", "Pagamento de fatura", "Comer Fora", "Giovanna Peral Salvadeo", "Cristiano", "Ajuste de Saldo" };
 
         /// <summary>
         ///  Represents a collection of distinct categories used for generating reports.
@@ -56,6 +55,12 @@ namespace OrganizzeReports.Console.Services
             _isReady = true;
         }
 
+        /// <summary>
+        /// The report focuses on analyzing transactions clustered by their respective categories.
+        /// Spreadsheets will be generated to present the transactions segregated by periods and a spreadsheet to 
+        /// present the amounts by category and period.
+        /// </summary>
+        /// <returns>A task representing the asynchronous operation.</returns>
         public async Task GenerateCategoryReport()
         {
             if (!_isReady) await Init();
@@ -63,42 +68,54 @@ namespace OrganizzeReports.Console.Services
             // Retrieve transactions from Organizze API
             var transactionsDTOCurrentMonth = await _apiAdapter.GetTransactions();
             var transactionsDTO12MonthsAgo = await GetTransactionsFromPastMonths(12);
-            var transactionsDTOLastMonth = transactionsDTO12MonthsAgo.Where(dto => dto.Date >= new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(-1));
-            var transactionsDTO3MonthsAgo = transactionsDTO12MonthsAgo.Where(dto => dto.Date >= new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(-3));
-            var transactionsDTO6MonthsAgo = transactionsDTO12MonthsAgo.Where(dto => dto.Date >= new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(-6));
 
             // Map transactions to view models
             var transactionsCurrentMonth = MapTransactionsViewModelFromDTO(transactionsDTOCurrentMonth);
-            var transactionsLastMonth = MapTransactionsViewModelFromDTO(transactionsDTOLastMonth);
-            var transactions3MonthsAgo = MapTransactionsViewModelFromDTO(transactionsDTO3MonthsAgo);
-            var transactions6MonthsAgo = MapTransactionsViewModelFromDTO(transactionsDTO6MonthsAgo);
             var transactions12MonthsAgo = MapTransactionsViewModelFromDTO(transactionsDTO12MonthsAgo);
+
+            // Filter out transactions of ignored categories
+            transactionsCurrentMonth = FilterOutTransactionsOfIgnoredCategories(transactionsCurrentMonth);
+            transactions12MonthsAgo = FilterOutTransactionsOfIgnoredCategories(transactions12MonthsAgo);
+
+            // Treat transactions of consortium category
+            transactionsCurrentMonth = InvertConsortiumCategoryTransactionAmounts(transactionsCurrentMonth);
+            transactions12MonthsAgo = InvertConsortiumCategoryTransactionAmounts(transactions12MonthsAgo);
+
+            // Segregate transactions by period
+            var transactionsLastMonth = transactions12MonthsAgo.Where(dto => dto.Date >= new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(-1));
+            var transactions3MonthsAgo = transactions12MonthsAgo.Where(dto => dto.Date >= new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(-3));
+            var transactions6MonthsAgo = transactions12MonthsAgo.Where(dto => dto.Date >= new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(-6));
 
             // Generate summary view models
             var transactionsSummary = GetTransactionsSummaryViewModel(transactionsCurrentMonth, transactionsLastMonth, transactions3MonthsAgo, transactions6MonthsAgo, transactions12MonthsAgo);
 
-            // Generate file path           
+            // Generate file path
             string filePath = GetReportFilePath();
 
             var spreadSheets = new List<SpreadSheet>
-            {
-                new SpreadSheet { Name = "Resumo", Items = transactionsSummary, CurrencyColumns = Enumerable.Range(2, 8).ToList() },
-                new SpreadSheet { Name = "Atual", Items = transactionsCurrentMonth, CurrencyColumns = new List<int>(){3} },
-                new SpreadSheet { Name = "Anterior", Items = transactionsLastMonth, CurrencyColumns = new List<int>(){3} },
-                new SpreadSheet { Name = "3Meses", Items = transactions3MonthsAgo, CurrencyColumns = new List<int>(){3} },
-                new SpreadSheet { Name = "6Meses", Items = transactions6MonthsAgo, CurrencyColumns = new List<int>(){3} },
-                new SpreadSheet { Name = "12Meses", Items = transactions12MonthsAgo, CurrencyColumns = new List<int>(){3} },
-            };
+                    {
+                        new SpreadSheet { Name = "Resumo", Items = transactionsSummary, CurrencyColumns = Enumerable.Range(2, 8).ToList() },
+                        new SpreadSheet { Name = "Atual", Items = transactionsCurrentMonth, CurrencyColumns = new List<int>(){3} },
+                        new SpreadSheet { Name = "Anterior", Items = transactionsLastMonth, CurrencyColumns = new List<int>(){3} },
+                        new SpreadSheet { Name = "3Meses", Items = transactions3MonthsAgo, CurrencyColumns = new List<int>(){3} },
+                        new SpreadSheet { Name = "6Meses", Items = transactions6MonthsAgo, CurrencyColumns = new List<int>(){3} },
+                        new SpreadSheet { Name = "12Meses", Items = transactions12MonthsAgo, CurrencyColumns = new List<int>(){3} },
+                    };
 
             _excelService.GenerateExcelFile(filePath, spreadSheets);
         }
 
+        #region Data Transformation
+        /// <summary>
+        /// Retrieves categories with enriched names, including the parent category name for nested categories.
+        /// </summary>
+        /// <returns>A collection of CategoryDTO objects with enriched names.</returns>
         private async Task<IEnumerable<CategoryDTO>> GetCategoryWithEnrichedNames()
         {
             var categories = await _apiAdapter.GetCategories();
             foreach (var category in categories)
             {
-                if(category.ParentId != null)
+                if (category.ParentId != null)
                 {
                     var parentCategory = categories.FirstOrDefault(c => c.Id == category.ParentId);
                     category.Name = $"[{parentCategory.Name}] {category.Name}";
@@ -107,28 +124,32 @@ namespace OrganizzeReports.Console.Services
             return categories;
         }
 
+        /// <summary>
+        /// Retrieves transactions from the past specified number of months.
+        /// </summary>
+        /// <param name="numberOfMonths">The number of months to retrieve transactions from.</param>
+        /// <returns>A collection of TransactionDTO objects representing the retrieved transactions.</returns>
         private async Task<IEnumerable<TransactionDTO>> GetTransactionsFromPastMonths(int numberOfMonths)
         {
             var transactions = new List<TransactionDTO>();
             for (var i = 1; i <= numberOfMonths; i++)
             {
                 var startDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(-i);
-                var endDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(-i+1).AddDays(-1);
+                var endDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(-i + 1).AddDays(-1);
 
                 transactions.AddRange(await _apiAdapter.GetTransactions(startDate, endDate));
-
             }
             return transactions;
         }
 
+        /// <summary>
+        /// Maps the transaction data from DTOs to view models.
+        /// </summary>
+        /// <param name="dtos">The collection of TransactionDTO objects.</param>
+        /// <returns>The collection of TransactionViewModel objects.</returns>
         private IEnumerable<TransactionViewModel> MapTransactionsViewModelFromDTO(IEnumerable<TransactionDTO> dtos)
         {
-            return dtos.Where(dto =>
-            {   
-                // filter out transactions with irrelevant categories
-                var category = _categories.FirstOrDefault(c => c.Id == dto.CategoryId);
-                return category != null && !_categoriesToIgnore.Contains(category.Name);
-            }).Select(dto =>
+            return dtos.Select(dto =>
             {
                 var category = _categories.FirstOrDefault(c => c.Id == dto.CategoryId);
                 var account = _accounts.FirstOrDefault(a => a.Id == dto.AccountId);
@@ -146,10 +167,50 @@ namespace OrganizzeReports.Console.Services
                     Category = category?.Name,
                     CreditCard = creditCard?.Name
                 };
-            })
-            .Where(viewModel => viewModel != null);
+            });
         }
 
+        /// <summary>
+        /// Filters out transactions of ignored categories from the given collection of transactions.
+        /// </summary>
+        /// <param name="transactions">The collection of transactions to filter.</param>
+        /// <returns>The filtered collection of transactions.</returns>
+        private IEnumerable<TransactionViewModel> FilterOutTransactionsOfIgnoredCategories(IEnumerable<TransactionViewModel> transactions)
+        {
+            return transactions.Where(transaction =>
+            {
+                return transaction.Category != null && !_categoriesToIgnore.Contains(transaction.Category);
+            });
+        }
+
+        /// <summary>
+        /// Inverts the amount of transactions of the "Consórcio" category.
+        /// </summary>
+        /// <param name="transactions"></param>
+        /// <returns>Returns transactions with adjusted amounts</returns>
+        private IEnumerable<TransactionViewModel> InvertConsortiumCategoryTransactionAmounts(IEnumerable<TransactionViewModel> transactions)
+        {
+            return transactions.Select(transaction =>
+            {
+                if (transaction.Category == "Consórcio")
+                {
+                    transaction.Amount = -transaction.Amount;
+                }
+                return transaction;
+            });
+        }
+        #endregion
+
+
+        /// <summary>
+        /// Generates a collection of TransactionsSummaryViewModel objects based on the given collections of transactions.
+        /// </summary>
+        /// <param name="currentMonth">Transactions of the current month</param>
+        /// <param name="lastMonth">Transactions of the last month</param>
+        /// <param name="threeMonths">Transactions of the last three months</param>
+        /// <param name="sixMonths">Transactions of the last six months</param>
+        /// <param name="twelveMonths">Transactions of the last twelve months</param>
+        /// <returns>A collection of TransactionsSummaryViewModel objects</returns>
         private IEnumerable<TransactionsSummaryViewModel> GetTransactionsSummaryViewModel(IEnumerable<TransactionViewModel> currentMonth,
                                                                                 IEnumerable<TransactionViewModel> lastMonth,
                                                                                 IEnumerable<TransactionViewModel> threeMonths,
