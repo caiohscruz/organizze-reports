@@ -33,12 +33,9 @@ namespace OrganizzeReports.Console.Services
         /// <summary>
         /// Represents a collection of categories that are not relevant for generating reports.
         /// </summary>
-        private readonly List<string> _categoriesToIgnore = new List<string>() { "Transferências", "Pagamento de fatura", "Comer Fora", "Giovanna Peral Salvadeo", "Cristiano", "Ajuste de Saldo" };
-
-        /// <summary>
-        ///  Represents a collection of distinct categories used for generating reports.
-        /// </summary>
-        private IEnumerable<string> _distinctCategories;
+        private readonly List<string> _categoriesToIgnore = new List<string>() { "Transferências", "Pagamento de fatura", "Comer Fora",
+                                                                                 "Ajuste de Saldo", "Assinaturas e Serviços",
+                                                                                 "Dívidas", "[Dívidas] Amortização de Dívida", "[Dívidas] Juros de Dívida", };
 
         public ReportService(OrganizzeAPIAdapter apiAdapter, ExcelService.ExcelService excelService)
         {
@@ -48,8 +45,9 @@ namespace OrganizzeReports.Console.Services
 
         private async Task Init()
         {
-            _categories = await GetCategoryWithEnrichedNames();
-            _distinctCategories = _categories.Where(t => !_categoriesToIgnore.Contains(t.Name)).Select(t => t.Name).Distinct().OrderBy(c => c);
+            var categories = await _apiAdapter.GetCategories();
+            categories = GetCategoryWithEnrichedNames(categories);
+            _categories = FilterOutCategoriesToIgnore(categories);
             _accounts = await _apiAdapter.GetAccounts();
             _creditCards = await _apiAdapter.GetCreditCards();
             _isReady = true;
@@ -74,12 +72,8 @@ namespace OrganizzeReports.Console.Services
             var transactions12MonthsAgo = MapTransactionsViewModelFromDTO(transactionsDTO12MonthsAgo);
 
             // Filter out transactions of ignored categories
-            transactionsCurrentMonth = FilterOutTransactionsOfIgnoredCategories(transactionsCurrentMonth);
-            transactions12MonthsAgo = FilterOutTransactionsOfIgnoredCategories(transactions12MonthsAgo);
-
-            // Treat transactions of consortium category
-            transactionsCurrentMonth = InvertConsortiumCategoryTransactionAmounts(transactionsCurrentMonth);
-            transactions12MonthsAgo = InvertConsortiumCategoryTransactionAmounts(transactions12MonthsAgo);
+            transactionsCurrentMonth = FilterOutTransactionsWithoutCategoryLinked(transactionsCurrentMonth);
+            transactions12MonthsAgo = FilterOutTransactionsWithoutCategoryLinked(transactions12MonthsAgo);
 
             // Segregate transactions by period
             var transactionsLastMonth = transactions12MonthsAgo.Where(dto => dto.Date >= new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(-1));
@@ -110,9 +104,8 @@ namespace OrganizzeReports.Console.Services
         /// Retrieves categories with enriched names, including the parent category name for nested categories.
         /// </summary>
         /// <returns>A collection of CategoryDTO objects with enriched names.</returns>
-        private async Task<IEnumerable<CategoryDTO>> GetCategoryWithEnrichedNames()
+        private IEnumerable<CategoryDTO> GetCategoryWithEnrichedNames(IEnumerable<CategoryDTO> categories)
         {
-            var categories = await _apiAdapter.GetCategories();
             foreach (var category in categories)
             {
                 if (category.ParentId != null)
@@ -175,29 +168,22 @@ namespace OrganizzeReports.Console.Services
         /// </summary>
         /// <param name="transactions">The collection of transactions to filter.</param>
         /// <returns>The filtered collection of transactions.</returns>
-        private IEnumerable<TransactionViewModel> FilterOutTransactionsOfIgnoredCategories(IEnumerable<TransactionViewModel> transactions)
+        private IEnumerable<TransactionViewModel> FilterOutTransactionsWithoutCategoryLinked(IEnumerable<TransactionViewModel> transactions)
         {
             return transactions.Where(transaction =>
             {
-                return transaction.Category != null && !_categoriesToIgnore.Contains(transaction.Category);
+                return transaction.Category != null;
             });
         }
 
         /// <summary>
-        /// Inverts the amount of transactions of the "Consórcio" category.
+        /// Filters out categories that are not relevant for generating reports.
         /// </summary>
-        /// <param name="transactions"></param>
-        /// <returns>Returns transactions with adjusted amounts</returns>
-        private IEnumerable<TransactionViewModel> InvertConsortiumCategoryTransactionAmounts(IEnumerable<TransactionViewModel> transactions)
+        /// <param name="categories"></param>
+        /// <returns></returns>
+        private IEnumerable<CategoryDTO> FilterOutCategoriesToIgnore(IEnumerable<CategoryDTO> categories)
         {
-            return transactions.Select(transaction =>
-            {
-                if (transaction.Category == "Consórcio")
-                {
-                    transaction.Amount = -transaction.Amount;
-                }
-                return transaction;
-            });
+            return categories.Where(category => !category.Archived && !_categoriesToIgnore.Contains(category.Name));
         }
         #endregion
 
@@ -217,7 +203,9 @@ namespace OrganizzeReports.Console.Services
                                                                                 IEnumerable<TransactionViewModel> sixMonths,
                                                                                 IEnumerable<TransactionViewModel> twelveMonths)
         {
-            return _distinctCategories.Select(category =>
+            var distinctCategories = _categories.Select(t => t.Name).Distinct().OrderBy(c => c);
+
+            return distinctCategories.Select(category =>
             {
                 var totalLast3Months = threeMonths.Where(t => t.Category == category).Sum(t => t.Amount);
                 var totalLast6Months = sixMonths.Where(t => t.Category == category).Sum(t => t.Amount);
