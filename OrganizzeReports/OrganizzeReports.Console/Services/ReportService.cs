@@ -205,7 +205,7 @@ namespace OrganizzeReports.Console.Services
         {
             var distinctCategories = _categories.Select(t => t.Name).Distinct().OrderBy(c => c);
 
-            return distinctCategories.Select(category =>
+            var data = distinctCategories.Select(category =>
             {
                 var totalLast3Months = threeMonths.Where(t => t.Category == category).Sum(t => t.Amount);
                 var totalLast6Months = sixMonths.Where(t => t.Category == category).Sum(t => t.Amount);
@@ -225,6 +225,22 @@ namespace OrganizzeReports.Console.Services
 
                 };
             });
+
+            var sumRow = data.Aggregate(new TransactionsSummaryViewModel(), (acc, item) =>
+            {
+                acc.CategoryName = "----TOTAL----";
+                acc.TotalCurrentMonth += item.TotalCurrentMonth;
+                acc.TotalLastMonth += item.TotalLastMonth;
+                acc.TotalLast3Months += item.TotalLast3Months;
+                acc.TotalLast6Months += item.TotalLast6Months;
+                acc.TotalLast12Months += item.TotalLast12Months;
+                acc.MonthlyProportionLast3Months += item.MonthlyProportionLast3Months;
+                acc.MonthlyProportionLast6Months += item.MonthlyProportionLast6Months;
+                acc.MonthlyProportionLast12Months += item.MonthlyProportionLast12Months;
+                return acc;
+            });
+
+            return data.Append(sumRow);
         }
         private string GetReportFilePath()
         {
