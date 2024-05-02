@@ -33,9 +33,8 @@ namespace OrganizzeReports.Console.Services
         /// <summary>
         /// Represents a collection of categories that are not relevant for generating reports.
         /// </summary>
-        private readonly List<string> _categoriesToIgnore = new List<string>() { "Transferências", "Pagamento de fatura", "Comer Fora",
-                                                                                 "Ajuste de Saldo", "Assinaturas e Serviços",
-                                                                                 "Dívidas", "[Dívidas] Amortização de Dívida", "[Dívidas] Juros de Dívida", };
+        private readonly List<string> _categoriesToIgnore = new List<string>() { "Transferências", "Pagamento de fatura", "Ajuste de Saldo", 
+                                                                                "[Dívidas] Amortização de Dívida", "[Dívidas] Juros de Dívida", };
 
         public ReportService(OrganizzeAPIAdapter apiAdapter, ExcelService.ExcelService excelService)
         {
@@ -111,7 +110,7 @@ namespace OrganizzeReports.Console.Services
                 if (category.ParentId != null)
                 {
                     var parentCategory = categories.FirstOrDefault(c => c.Id == category.ParentId);
-                    category.Name = $"[{parentCategory.Name}] {category.Name}";
+                    category.Name = $"{parentCategory.Name} > {category.Name}";
                 }
             }
             return categories;
@@ -183,7 +182,8 @@ namespace OrganizzeReports.Console.Services
         /// <returns></returns>
         private IEnumerable<CategoryDTO> FilterOutCategoriesToIgnore(IEnumerable<CategoryDTO> categories)
         {
-            return categories.Where(category => !category.Archived && !_categoriesToIgnore.Contains(category.Name));
+            var parentCategories = categories.Select(c => c.ParentId).Distinct();
+            return categories.Where(category => !category.Archived && !parentCategories.Contains(category.Id) && !_categoriesToIgnore.Contains(category.Name));
         }
         #endregion
 
