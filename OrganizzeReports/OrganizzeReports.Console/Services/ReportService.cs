@@ -133,6 +133,24 @@ namespace OrganizzeReports.Console.Services
             }
             return transactions;
         }
+        
+        /// <summary>
+        /// Retrieves transactions from the next specified number of months.
+        /// </summary>
+        /// <param name="numberOfMonths">The number of months to retrieve transactions from.</param>
+        /// <returns>A collection of TransactionDTO objects representing the retrieved transactions.</returns>
+        private async Task<IEnumerable<TransactionDTO>> GetTransactionsFromNextMonths(int numberOfMonths)
+        {
+            var transactions = new List<TransactionDTO>();
+            for (var i = 1; i <= numberOfMonths; i++)
+            {
+                var startDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(i-1);
+                var endDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(i).AddDays(-1);
+
+                transactions.AddRange(await _apiAdapter.GetTransactions(startDate, endDate));
+            }
+            return transactions;
+        }
 
         /// <summary>
         /// Maps the transaction data from DTOs to view models.
