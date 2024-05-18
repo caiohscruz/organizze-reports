@@ -2,6 +2,7 @@
 using OrganizzeReports.Console.Adapters;
 using OrganizzeReports.Console.Services;
 using OrganizzeReports.Console.Services.ExcelService;
+using System.Text;
 
 namespace OrganizzeReports.Console
 {
@@ -11,12 +12,12 @@ namespace OrganizzeReports.Console
         {
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json")
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .Build();
 
             var apiAdapter = new OrganizzeAPIAdapter(configuration);
-            var excelServce = new ExcelService();
-            var reportService = new ReportService(apiAdapter, excelServce);
+            var excelService = new ExcelService();
+            var reportService = new ReportService(apiAdapter, excelService, configuration);
 
             var isReportGenerated = false;
             var error = string.Empty;

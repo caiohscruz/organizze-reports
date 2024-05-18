@@ -1,7 +1,9 @@
-﻿using OrganizzeReports.Console.Adapters;
+﻿using Microsoft.Extensions.Configuration;
+using OrganizzeReports.Console.Adapters;
 using OrganizzeReports.Console.DTOs;
 using OrganizzeReports.Console.Services.ExcelService;
 using OrganizzeReports.Console.ViewModels;
+using System.Net;
 
 namespace OrganizzeReports.Console.Services
 {
@@ -33,13 +35,13 @@ namespace OrganizzeReports.Console.Services
         /// <summary>
         /// Represents a collection of categories that are not relevant for generating reports.
         /// </summary>
-        private readonly List<string> _categoriesToIgnore = new List<string>() { "Transferências", "Pagamento de fatura", "Ajuste de Saldo",
-                                                                                "[Dívidas] Amortização de Dívida", "[Dívidas] Juros de Dívida", };
+        private readonly List<string> _categoriesToIgnore;
 
-        public ReportService(OrganizzeAPIAdapter apiAdapter, ExcelService.ExcelService excelService)
+        public ReportService(OrganizzeAPIAdapter apiAdapter, ExcelService.ExcelService excelService, IConfiguration configuration)
         {
             _apiAdapter = apiAdapter;
             _excelService = excelService;
+            _categoriesToIgnore = configuration.GetSection("ReportSettings:CategoriesToIgnore").Get<List<string>>();
         }
 
         private async Task Init()
