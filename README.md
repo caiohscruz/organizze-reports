@@ -3,6 +3,9 @@
 ## Description
 Organizze Reports is a console application that generates reports based on financial transactions from the Organizze API. It provides insights and analysis of transactions grouped by categories.
 
+I created this application because the Organizze app, which I use to track my financial operations, does not provide the reports that I have access to in my spreadsheet-based tracking. 
+For example, in Organizze, credit card transactions are only accounted for in the month when the bill is paid, but for me, it is important to see the moment of purchase when the debt was incurred.
+
 ## Features
 - Generate category reports: The application generates spreadsheets that present transactions segregated by periods and amounts by category and period.
 - Enriched category names: Categories are retrieved with enriched names, including the parent category name for nested categories.
@@ -22,4 +25,3 @@ Organizze Reports is a console application that generates reports based on finan
 - OrganizzeAPIAdapter: A class that interacts with the Organizze API to retrieve transactions, categories, accounts, and credit cards.
 - ExcelService: A service that generates Excel spreadsheets based on the provided data.
 - ReportService: A service that generates reports based on transactions and categories.
-
