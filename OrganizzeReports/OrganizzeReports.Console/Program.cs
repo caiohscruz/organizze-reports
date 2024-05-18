@@ -1,4 +1,5 @@
-﻿using OrganizzeReports.Console.Adapters;
+﻿using Microsoft.Extensions.Configuration;
+using OrganizzeReports.Console.Adapters;
 using OrganizzeReports.Console.Services;
 using OrganizzeReports.Console.Services.ExcelService;
 
@@ -8,21 +9,12 @@ namespace OrganizzeReports.Console
     {
         static void Main(string[] args)
         {
-            System.Console.WriteLine("Digite seu email:");
-            string email = System.Console.ReadLine();
+            var configuration = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json")
+                .Build();
 
-            System.Console.WriteLine("Digite seu nome:");
-            string name = System.Console.ReadLine();
-
-            System.Console.WriteLine("Digite sua apiKey:");
-            System.Console.WriteLine("Para obter sua apiKey acesse: https://app.organizze.com.br/configuracoes/api-keys");
-            string apiKey = System.Console.ReadLine();
-
-            //string email = "";
-            //string name = "";
-            //string apiKey = "";
-
-            var apiAdapter = new OrganizzeAPIAdapter(name, email, apiKey);
+            var apiAdapter = new OrganizzeAPIAdapter(configuration);
             var excelServce = new ExcelService();
             var reportService = new ReportService(apiAdapter, excelServce);
 

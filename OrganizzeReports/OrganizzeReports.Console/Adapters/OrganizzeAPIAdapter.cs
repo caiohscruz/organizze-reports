@@ -1,4 +1,5 @@
-﻿using OrganizzeReports.Console.DTOs;
+﻿using Microsoft.Extensions.Configuration;
+using OrganizzeReports.Console.DTOs;
 using OrganizzeReports.Console.Utils;
 using System.Net;
 using System.Net.Http.Headers;
@@ -31,11 +32,11 @@ namespace OrganizzeReports.Console.Adapters
                 _ => throw new ArgumentException("Unknown endpoint"),
             };
 
-            return $"{_baseUrl}/{endpointPath}";
+            return $"{_settings.BaseUrl}/{endpointPath}";
         }
         #endregion
 
-        private readonly string _baseUrl = "https://api.organizze.com.br/rest/v2";
+        private readonly OrganizzeAPISettings _settings;
         private readonly HttpClient _httpClient;
 
         /// <summary>
@@ -44,11 +45,13 @@ namespace OrganizzeReports.Console.Adapters
         /// <param name="name">The name of the user.</param>
         /// <param name="email">The email of the user.</param>
         /// <param name="apiKey">The API key for accessing the Organizze API.</param>
-        public OrganizzeAPIAdapter(string name, string email, string apiKey)
+        public OrganizzeAPIAdapter(IConfiguration configuration)
         {
+            _settings = configuration.GetSection("OrganizzeApiSettings").Get<OrganizzeAPISettings>();
+
             HttpClient client = new HttpClient();
-            client.DefaultRequestHeaders.Add("Authorization", "Basic " + Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes($"{email}:{apiKey}")));
-            client.DefaultRequestHeaders.Add("User-Agent", $"{name} ({email})");
+            client.DefaultRequestHeaders.Add("Authorization", "Basic " + Convert.ToBase64String(System.Text.Encoding.ASCII.GetBytes($"{_settings.Email}:{_settings.ApiKey}")));
+            client.DefaultRequestHeaders.Add("User-Agent", $"{_settings.UserName} ({_settings.Email})");
             _httpClient = client;
         }
 
