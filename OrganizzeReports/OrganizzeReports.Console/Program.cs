@@ -15,6 +15,7 @@ namespace OrganizzeReports.Console
             string name = System.Console.ReadLine();
 
             System.Console.WriteLine("Digite sua apiKey:");
+            System.Console.WriteLine("Para obter sua apiKey acesse: https://app.organizze.com.br/configuracoes/api-keys");
             string apiKey = System.Console.ReadLine();
 
             //string email = "";
