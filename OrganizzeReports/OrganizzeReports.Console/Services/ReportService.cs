@@ -33,7 +33,7 @@ namespace OrganizzeReports.Console.Services
         /// <summary>
         /// Represents a collection of categories that are not relevant for generating reports.
         /// </summary>
-        private readonly List<string> _categoriesToIgnore = new List<string>() { "Transferências", "Pagamento de fatura", "Ajuste de Saldo", 
+        private readonly List<string> _categoriesToIgnore = new List<string>() { "Transferências", "Pagamento de fatura", "Ajuste de Saldo",
                                                                                 "[Dívidas] Amortização de Dívida", "[Dívidas] Juros de Dívida", };
 
         public ReportService(OrganizzeAPIAdapter apiAdapter, ExcelService.ExcelService excelService)
@@ -65,14 +65,17 @@ namespace OrganizzeReports.Console.Services
             // Retrieve transactions from Organizze API
             var transactionsDTOCurrentMonth = await _apiAdapter.GetTransactions();
             var transactionsDTO12MonthsAgo = await GetTransactionsFromPastMonths(12);
+            var transactionsDTONext12Months = await GetTransactionsFromNextMonths(12);
 
             // Map transactions to view models
             var transactionsCurrentMonth = MapTransactionsViewModelFromDTO(transactionsDTOCurrentMonth);
             var transactions12MonthsAgo = MapTransactionsViewModelFromDTO(transactionsDTO12MonthsAgo);
+            var transactionsNext12Months = MapTransactionsViewModelFromDTO(transactionsDTONext12Months);
 
             // Filter out transactions of ignored categories
             transactionsCurrentMonth = FilterOutTransactionsWithoutCategoryLinked(transactionsCurrentMonth);
             transactions12MonthsAgo = FilterOutTransactionsWithoutCategoryLinked(transactions12MonthsAgo);
+            transactionsNext12Months = FilterOutTransactionsWithoutCategoryLinked(transactionsNext12Months);
 
             // Segregate transactions by period
             var transactionsLastMonth = transactions12MonthsAgo.Where(dto => dto.Date >= new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(-1));
@@ -82,12 +85,16 @@ namespace OrganizzeReports.Console.Services
             // Generate summary view models
             var transactionsSummary = GetTransactionsSummaryViewModel(transactionsCurrentMonth, transactionsLastMonth, transactions3MonthsAgo, transactions6MonthsAgo, transactions12MonthsAgo);
 
+            // Generate future estimation view models
+            var futureEstimations = GetFutureEstimationViewModels(transactionsNext12Months);
+
             // Generate file path
             string filePath = GetReportFilePath();
 
             var spreadSheets = new List<SpreadSheet>
                     {
                         new SpreadSheet { Name = "Resumo", Items = transactionsSummary, CurrencyColumns = Enumerable.Range(2, 8).ToList() },
+                        new SpreadSheet { Name = "Estimativa", Items = futureEstimations, CurrencyColumns = Enumerable.Range(1, 12).ToList() },
                         new SpreadSheet { Name = "Atual", Items = transactionsCurrentMonth, CurrencyColumns = new List<int>(){3} },
                         new SpreadSheet { Name = "Anterior", Items = transactionsLastMonth, CurrencyColumns = new List<int>(){3} },
                         new SpreadSheet { Name = "3Meses", Items = transactions3MonthsAgo, CurrencyColumns = new List<int>(){3} },
@@ -133,7 +140,7 @@ namespace OrganizzeReports.Console.Services
             }
             return transactions;
         }
-        
+
         /// <summary>
         /// Retrieves transactions from the next specified number of months.
         /// </summary>
@@ -144,7 +151,7 @@ namespace OrganizzeReports.Console.Services
             var transactions = new List<TransactionDTO>();
             for (var i = 1; i <= numberOfMonths; i++)
             {
-                var startDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(i-1);
+                var startDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(i - 1);
                 var endDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(i).AddDays(-1);
 
                 transactions.AddRange(await _apiAdapter.GetTransactions(startDate, endDate));
@@ -260,6 +267,90 @@ namespace OrganizzeReports.Console.Services
 
             return data.Append(sumRow);
         }
+
+        /// <summary>
+        /// Generates a collection of FutureEstimationViewModel objects based on the given collection of transactions.
+        /// </summary>
+        /// <param name="transactions">The collection of TransactionViewModel objects.</param>
+        /// <returns>A collection of FutureEstimationViewModel objects.</returns>
+        private IEnumerable<FutureEstimationViewModel> GetFutureEstimationViewModels(IEnumerable<TransactionViewModel> transactions)
+        {
+            var distinctCategories = _categories.Select(t => t.Name).Distinct().OrderBy(c => c);
+
+            var nextTransactionsSegregatedByMonth = new List<IEnumerable<TransactionViewModel>>();
+
+            for (var i = 1; i <= 12; i++)
+            {
+                var startDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(i - 1);
+                var endDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).AddMonths(i).AddDays(-1);
+
+                var transactionsByMonth = transactions.Where(dto => dto.Date >= startDate && dto.Date <= endDate);
+
+                nextTransactionsSegregatedByMonth.Add(transactionsByMonth);
+            }
+
+            var data = distinctCategories.Select(category =>
+            {
+                return new FutureEstimationViewModel()
+                {
+                    CategoryName = category,
+                    Month1 = nextTransactionsSegregatedByMonth[0].Where(t => t.Category == category).Sum(t => t.Amount),
+                    Month2 = nextTransactionsSegregatedByMonth[1].Where(t => t.Category == category).Sum(t => t.Amount),
+                    Month3 = nextTransactionsSegregatedByMonth[2].Where(t => t.Category == category).Sum(t => t.Amount),
+                    Month4 = nextTransactionsSegregatedByMonth[3].Where(t => t.Category == category).Sum(t => t.Amount),
+                    Month5 = nextTransactionsSegregatedByMonth[4].Where(t => t.Category == category).Sum(t => t.Amount),
+                    Month6 = nextTransactionsSegregatedByMonth[5].Where(t => t.Category == category).Sum(t => t.Amount),
+                    Month7 = nextTransactionsSegregatedByMonth[6].Where(t => t.Category == category).Sum(t => t.Amount),
+                    Month8 = nextTransactionsSegregatedByMonth[7].Where(t => t.Category == category).Sum(t => t.Amount),
+                    Month9 = nextTransactionsSegregatedByMonth[8].Where(t => t.Category == category).Sum(t => t.Amount),
+                    Month10 = nextTransactionsSegregatedByMonth[9].Where(t => t.Category == category).Sum(t => t.Amount),
+                    Month11 = nextTransactionsSegregatedByMonth[10].Where(t => t.Category == category).Sum(t => t.Amount),
+                    Month12 = nextTransactionsSegregatedByMonth[11].Where(t => t.Category == category).Sum(t => t.Amount)
+                };
+            });
+
+            const decimal contentmentPlan = 2500;
+            decimal actualMonthPlan = contentmentPlan + nextTransactionsSegregatedByMonth[0].Where(t => t.Recurring == false && t.Installment == 1 && t.Amount < 0).Sum(t => t.Amount);
+            actualMonthPlan = actualMonthPlan < 0 ? 0 : actualMonthPlan;
+
+            data = data.Append(new FutureEstimationViewModel()
+            {
+                CategoryName = "----Plano de Contenção----",
+                Month1 = -actualMonthPlan,
+                Month2 = -contentmentPlan,
+                Month3 = -contentmentPlan,
+                Month4 = -contentmentPlan,
+                Month5 = -contentmentPlan,
+                Month6 = -contentmentPlan,
+                Month7 = -contentmentPlan,
+                Month8 = -contentmentPlan,
+                Month9 = -contentmentPlan,
+                Month10 = -contentmentPlan,
+                Month11 = -contentmentPlan,
+                Month12 = -contentmentPlan,
+            });
+
+            var sumRow = data.Aggregate(new FutureEstimationViewModel(), (acc, item) =>
+            {
+                acc.CategoryName = "----TOTAL----";
+                acc.Month1 += item.Month1;
+                acc.Month2 += item.Month2;
+                acc.Month3 += item.Month3;
+                acc.Month4 += item.Month4;
+                acc.Month5 += item.Month5;
+                acc.Month6 += item.Month6;
+                acc.Month7 += item.Month7;
+                acc.Month8 += item.Month8;
+                acc.Month9 += item.Month9;
+                acc.Month10 += item.Month10;
+                acc.Month11 += item.Month11;
+                acc.Month12 += item.Month12;
+                return acc;
+            });
+
+            return data.Append(sumRow);
+        }
+
         private string GetReportFilePath()
         {
             string downloadsPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
