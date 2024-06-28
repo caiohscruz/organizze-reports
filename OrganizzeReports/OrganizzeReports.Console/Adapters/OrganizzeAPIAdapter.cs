@@ -1,8 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using OrganizzeReports.Console.DTOs;
 using OrganizzeReports.Console.Utils;
-using System.Net;
-using System.Net.Http.Headers;
 using System.Text.Json;
 
 namespace OrganizzeReports.Console.Adapters
@@ -16,6 +14,7 @@ namespace OrganizzeReports.Console.Adapters
         private enum Endpoint
         {
             CreditCards,
+            Invoices,
             Categories,
             Accounts,
             Transactions
@@ -29,6 +28,7 @@ namespace OrganizzeReports.Console.Adapters
                 Endpoint.Categories => "categories",
                 Endpoint.Accounts => "accounts",
                 Endpoint.Transactions => "transactions",
+                Endpoint.Invoices => "credit_cards/{0}/invoices",
                 _ => throw new ArgumentException("Unknown endpoint"),
             };
 
@@ -104,14 +104,25 @@ namespace OrganizzeReports.Console.Adapters
         {
             return await GetEndpointData<CreditCardDTO>(Endpoint.CreditCards);
         }
+
+        /// <summary>
+        /// Retrieves all invoices of current year.
+        /// </summary>
+        /// <returns>Returns a collection of <see cref="InvoiceDTO"/>.</returns>
+        public async Task<IEnumerable<InvoiceDTO>> GetInvoices(int id)
+        {
+            return await GetEndpointData<InvoiceDTO>(endpoint: Endpoint.Invoices, routeParam: id);
+        }
         #endregion
 
         #region Utils
-        private async Task<IEnumerable<T>> GetEndpointData<T>(Endpoint endpoint, string queryString = null)
+        private async Task<IEnumerable<T>> GetEndpointData<T>(Endpoint endpoint, string queryString = null, int? routeParam = null)
         {
             string endpointUrl = GetEndpointUrl(endpoint);
 
             if (!string.IsNullOrEmpty(queryString)) endpointUrl += queryString;
+
+            if (routeParam != null) endpointUrl = string.Format(endpointUrl, routeParam);
 
             HttpResponseMessage response = await _httpClient.GetAsync(endpointUrl);
 

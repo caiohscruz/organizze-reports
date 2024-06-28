@@ -3,7 +3,6 @@ using OrganizzeReports.Console.Adapters;
 using OrganizzeReports.Console.DTOs;
 using OrganizzeReports.Console.Services.ExcelService;
 using OrganizzeReports.Console.ViewModels;
-using System.Net;
 
 namespace OrganizzeReports.Console.Services
 {
@@ -16,21 +15,51 @@ namespace OrganizzeReports.Console.Services
         /// Represents a collection of categories relevant for generating reports.
         /// </summary>
         private IEnumerable<CategoryDTO> _categories;
+        private async Task LoadCategories()
+        {
+            var categories = await _apiAdapter.GetCategories();
+            categories = GetCategoryWithEnrichedNames(categories);
+            _categories = FilterOutCategoriesToIgnore(categories);
+        }
 
         /// <summary>
         /// Represents a collection of accounts relevant for generating reports.
         /// </summary>
         private IEnumerable<AccountDTO> _accounts;
+        private async Task LoadAccounts()
+        {
+            _accounts = await _apiAdapter.GetAccounts();
+        }
 
         /// <summary>
         /// Represents a collection of credit cards relevant for generating reports.
         /// </summary>
         private IEnumerable<CreditCardDTO> _creditCards;
+        private async Task LoadCreditCards()
+        {
+            _creditCards = await _apiAdapter.GetCreditCards();
+        }
 
         /// <summary>
-        /// Indicates whether the service has retrieved the necessary data for generating reports.
+        /// Represents a collection of invoices relevant for generating reports.
         /// </summary>
-        private bool _isReady = false;
+        private IEnumerable<InvoiceDTO> _invoices;
+        private async Task LoadInvoices()
+        {
+            if (!_creditCards.Any())
+            {
+                await LoadCreditCards();
+            }
+            else
+            {
+                foreach (var creditCard in _creditCards)
+                {
+                    var invoices = await _apiAdapter.GetInvoices(creditCard.Id);
+                    _invoices = _invoices.Concat(invoices);
+                }
+            }
+
+        }
 
         /// <summary>
         /// Represents a collection of categories that are not relevant for generating reports.
@@ -44,16 +73,6 @@ namespace OrganizzeReports.Console.Services
             _categoriesToIgnore = configuration.GetSection("ReportSettings:CategoriesToIgnore").Get<List<string>>();
         }
 
-        private async Task Init()
-        {
-            var categories = await _apiAdapter.GetCategories();
-            categories = GetCategoryWithEnrichedNames(categories);
-            _categories = FilterOutCategoriesToIgnore(categories);
-            _accounts = await _apiAdapter.GetAccounts();
-            _creditCards = await _apiAdapter.GetCreditCards();
-            _isReady = true;
-        }
-
         /// <summary>
         /// The report focuses on analyzing transactions clustered by their respective categories.
         /// Spreadsheets will be generated to present the transactions segregated by periods and a spreadsheet to 
@@ -62,7 +81,7 @@ namespace OrganizzeReports.Console.Services
         /// <returns>A task representing the asynchronous operation.</returns>
         public async Task GenerateCategoryReport()
         {
-            if (!_isReady) await Init();
+            if (!_categories.Any()) await LoadCategories();
 
             // Retrieve transactions from Organizze API
             var transactionsDTOCurrentMonth = await _apiAdapter.GetTransactions();
@@ -94,15 +113,15 @@ namespace OrganizzeReports.Console.Services
             string filePath = GetReportFilePath();
 
             var spreadSheets = new List<SpreadSheet>
-                    {
-                        new SpreadSheet { Name = "Resumo", Items = transactionsSummary, CurrencyColumns = Enumerable.Range(2, 8).ToList() },
-                        new SpreadSheet { Name = "Estimativa", Items = futureEstimations, CurrencyColumns = Enumerable.Range(1, 12).ToList() },
-                        new SpreadSheet { Name = "Atual", Items = transactionsCurrentMonth, CurrencyColumns = new List<int>(){3} },
-                        new SpreadSheet { Name = "Anterior", Items = transactionsLastMonth, CurrencyColumns = new List<int>(){3} },
-                        new SpreadSheet { Name = "3Meses", Items = transactions3MonthsAgo, CurrencyColumns = new List<int>(){3} },
-                        new SpreadSheet { Name = "6Meses", Items = transactions6MonthsAgo, CurrencyColumns = new List<int>(){3} },
-                        new SpreadSheet { Name = "12Meses", Items = transactions12MonthsAgo, CurrencyColumns = new List<int>(){3} },
-                    };
+                {
+                    new SpreadSheet { Name = "Resumo", Items = transactionsSummary, CurrencyColumns = Enumerable.Range(2, 8).ToList() },
+                    new SpreadSheet { Name = "Estimativa", Items = futureEstimations, CurrencyColumns = Enumerable.Range(1, 12).ToList() },
+                    new SpreadSheet { Name = "Atual", Items = transactionsCurrentMonth, CurrencyColumns = new List<int>(){3} },
+                    new SpreadSheet { Name = "Anterior", Items = transactionsLastMonth, CurrencyColumns = new List<int>(){3} },
+                    new SpreadSheet { Name = "3Meses", Items = transactions3MonthsAgo, CurrencyColumns = new List<int>(){3} },
+                    new SpreadSheet { Name = "6Meses", Items = transactions6MonthsAgo, CurrencyColumns = new List<int>(){3} },
+                    new SpreadSheet { Name = "12Meses", Items = transactions12MonthsAgo, CurrencyColumns = new List<int>(){3} },
+                };
 
             _excelService.GenerateExcelFile(filePath, spreadSheets);
         }
@@ -214,7 +233,6 @@ namespace OrganizzeReports.Console.Services
         }
         #endregion
 
-
         /// <summary>
         /// Generates a collection of TransactionsSummaryViewModel objects based on the given collections of transactions.
         /// </summary>
@@ -289,7 +307,7 @@ namespace OrganizzeReports.Console.Services
                 var transactionsByMonth = transactions.Where(dto => dto.Date >= startDate && dto.Date <= endDate);
 
                 nextTransactionsSegregatedByMonth.Add(transactionsByMonth);
-            }
+        }
 
             var data = distinctCategories.Select(category =>
             {
